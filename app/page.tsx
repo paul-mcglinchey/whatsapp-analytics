@@ -4,15 +4,22 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import FileUpload from "./components/FileUpload";
 import { colours } from "./config/colours";
-import { shortMonths } from "./config/months";
 import chatConverter from "./services/chat-converter";
 import { IMessage } from "./models/message.model";
-import { getMembers, getTotalMessageFrequencies } from "./services/data-collectors";
+import { getSenders, getTotalMessageFrequencies } from "./services/data-collectors";
+import { ISender } from "./models/data.model";
+import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
+import { Transition } from "@headlessui/react";
+import SenderMultiSelect from "./components/SenderMultiSelect";
 
 export default function Page() {
 
   const [messages, setMessages] = useState<IMessage[]>([])
+  const [senders, setSenders] = useState<ISender[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [configOpen, setConfigOpen] = useState<boolean>(true)
+
+  const toggleConfigOpen = () => setConfigOpen(!configOpen)
 
   const generateColour = (): string => {
     return colours[Math.floor(Math.random() * colours.length)] || "#f43f5e";
@@ -37,25 +44,55 @@ export default function Page() {
         </div>
       </div>
       {messages.length > 0 ? (
-        <div className="mt-8 h-96 w-full">
-          <ResponsiveContainer>
-            <BarChart
-              data={getTotalMessageFrequencies(messages)}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              {getMembers(messages).map((m, i) => <Bar key={i} name={m} dataKey={`members.${i}.count`} fill={generateColour()} />)}
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="px-5 pt-2">
+          <div className="flex justify-end">
+            <button type="button" onClick={toggleConfigOpen} className="flex">
+              <EllipsisHorizontalIcon className="w-8 h-8" />
+            </button>
+          </div>
+          <Transition
+            show={configOpen}
+            enter="transition-opacity duration-75"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-opacity duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="">
+              <h3 className="text-2xl font-semibold tracking-wide">Senders</h3>
+              <div>
+                {getSenders(messages).map(s => (
+                  <div className="flex flex-grow justify-between">
+                    <div>{s}</div>
+                    <div className="w-72">
+                      <SenderMultiSelect />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Transition>
+          <div className="mt-8 h-96 w-full">
+            <ResponsiveContainer>
+              <BarChart
+                data={getTotalMessageFrequencies(messages, senders)}
+                margin={{
+                  top: 5,
+                  right: 0,
+                  left: 0,
+                  bottom: 5,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                {getSenders(messages).map((m, i) => <Bar key={i} name={m} dataKey={`members.${i}.count`} fill={generateColour()} />)}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : (
         isLoading ? (

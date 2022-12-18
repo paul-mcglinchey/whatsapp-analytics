@@ -1,7 +1,12 @@
+export interface ISender {
+  id: string
+  names: string[]
+}
+
 export interface IMessageFrequencies {
   month: string
-  members: {
-    name: string
+  senders: {
+    id: string 
     count: number
   }[]
 }
