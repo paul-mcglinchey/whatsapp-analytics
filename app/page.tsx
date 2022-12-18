@@ -1,40 +1,30 @@
 'use client'
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import FileUpload from "./components/FileUpload";
 import { colours } from "./config/colours";
 import { shortMonths } from "./config/months";
+import chatConverter from "./services/chat-converter";
 import { IMessage } from "./models/message.model";
+import { getMembers, getTotalMessageFrequencies } from "./services/data-collectors";
 
 export default function Page() {
 
-  const [messages, setMessages] = useState<IMessage[]>(JSON.parse(localStorage.getItem("messages") ?? "[]"))
-
-  const members = messages.reduce((p, c) => {
-    if (!p.find(m => m === c.sender)) p.push(c.sender)
-
-    return p
-  }, [] as string[])
-
-  const data = messages.reduce((p, c) => {
-    let monthSent = new Date(c.sentDate).getMonth()
-    let month = p.find(m => m.month === shortMonths[monthSent])
-    
-    if (month) {
-      let key = c.sender as string
-      if (!month.members.map(m => m.name).includes(key)) month.members.push({ name: c.sender, count: 0 })
-
-      month.members.map(m => m.name === c.sender ? { ...m, count: m.count++ } : m)
-    }
-
-    return p
-  },
-  Array.from(shortMonths).map(m => ({ month: m, members: [] })) as { month: string, members: { name: string, count: number}[] }[])
+  const [messages, setMessages] = useState<IMessage[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const generateColour = (): string => {
-    return colours[Math.floor(Math.random() * colours.length)] || "#f43f5e" ;
+    return colours[Math.floor(Math.random() * colours.length)] || "#f43f5e";
   }
+
+  useEffect(() => {
+    let localData = localStorage.getItem("messages")
+
+    if (localData) {
+      setMessages(JSON.parse(localData))
+    }
+  }, [])
 
   return (
     <>
@@ -43,29 +33,41 @@ export default function Page() {
           <h1 className="text-blue-500 text-3xl font-bold tracking-wider">Bonjourno, friendo</h1>
         </div>
         <div>
-          <FileUpload setFile={setMessages} />
+          <FileUpload setFile={setMessages} localStorageKey="messages" converter={chatConverter} />
         </div>
       </div>
-      <div className="mt-8 h-96 w-full">
-        <ResponsiveContainer>
-          <BarChart
-            data={data}
-            margin={{
-              top: 5,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {members.map((m, i) => <Bar key={i} name={m} dataKey={`members.${i}.count`} fill={generateColour()} /> )}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {messages.length > 0 ? (
+        <div className="mt-8 h-96 w-full">
+          <ResponsiveContainer>
+            <BarChart
+              data={getTotalMessageFrequencies(messages)}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {getMembers(messages).map((m, i) => <Bar key={i} name={m} dataKey={`members.${i}.count`} fill={generateColour()} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        isLoading ? (
+          <span>Loading...</span>
+        ) : (
+          <div className="p-4 text-center mt-10">
+            <h3 className="text-2xl font-bold tracking wide">
+              You haven't imported any whatsapp chats yet
+            </h3>
+          </div>
+        )
+      )}
     </>
   )
 }

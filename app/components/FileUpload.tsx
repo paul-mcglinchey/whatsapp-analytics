@@ -4,9 +4,11 @@ import { ChangeEvent, Dispatch, SetStateAction, useState } from "react"
 
 interface IFileUploadProps<T> {
   setFile: Dispatch<SetStateAction<T>>
+  localStorageKey: string
+  converter?: (text: string) => T
 }
 
-export default function FileUpload<T>({ setFile }: IFileUploadProps<T>) {
+export default function FileUpload<T>({ setFile, localStorageKey, converter }: IFileUploadProps<T>) {
 
   const [input, setInput] = useState<File | null>(null)
 
@@ -21,9 +23,16 @@ export default function FileUpload<T>({ setFile }: IFileUploadProps<T>) {
 
     reader.onload = (e) => {
       let text = e.target?.result as string
-      let json = JSON.parse(text)
+      let json: T
 
-      setFile(json as T)
+      if (converter) {
+        json = converter(text)
+      } else {
+        json = JSON.parse(text)
+      }
+
+      localStorage.setItem(localStorageKey, JSON.stringify(json))
+      setFile(json)
     }
     reader.readAsText(input)
   }
